@@ -16,13 +16,15 @@ type Status =
   | "unsupported"
   | "insecure";
 
+const BEEP_COOLDOWN_MS = 3000;
+
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef<number | null>(null);
-  const lastCodeRef = useRef<string | null>(null);
+  const cooldownUntilRef = useRef(0);
   const tickRef = useRef<() => void>(() => {});
 
   const [status, setStatus] = useState<Status>("idle");
@@ -79,8 +81,8 @@ export default function ScanPage() {
         });
 
         if (code && code.data) {
-          if (code.data !== lastCodeRef.current) {
-            lastCodeRef.current = code.data;
+          if (Date.now() >= cooldownUntilRef.current) {
+            cooldownUntilRef.current = Date.now() + BEEP_COOLDOWN_MS;
             const isMatch =
               normalizeUrl(code.data) === normalizeUrl(window.location.href);
 
@@ -95,7 +97,6 @@ export default function ScanPage() {
             }
           }
         } else {
-          lastCodeRef.current = null;
           setStatus("scanning");
         }
       }
@@ -151,7 +152,7 @@ export default function ScanPage() {
         await videoRef.current.play();
       }
       canvasRef.current ??= document.createElement("canvas");
-      lastCodeRef.current = null;
+      cooldownUntilRef.current = 0;
       setCurrentUrl(window.location.href);
       setStatus("scanning");
       rafRef.current = requestAnimationFrame(() => tickRef.current());
