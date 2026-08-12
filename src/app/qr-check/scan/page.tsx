@@ -55,6 +55,7 @@ function rampRegisterGain(ctx: AudioContext, gainNode: GainNode, duration: numbe
 }
 
 type SoundMode = "beep" | "payment";
+type CameraFacing = "user" | "environment";
 
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -72,6 +73,7 @@ export default function ScanPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [currentUrl, setCurrentUrl] = useState("");
   const [soundMode, setSoundMode] = useState<SoundMode>("beep");
+  const [facingMode, setFacingMode] = useState<CameraFacing>("user");
 
   const playBeep = useCallback((ok: boolean) => {
     const AudioCtx =
@@ -167,7 +169,7 @@ export default function ScanPage() {
     tickRef.current = tick;
   }, [tick]);
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (mode: CameraFacing = facingMode) => {
     // getUserMedia is only exposed in secure contexts (HTTPS, or localhost on
     // the device itself). Accessing the dev server from a phone via a plain
     // http://<LAN-IP> URL is not secure, so surface that clearly instead of
@@ -236,7 +238,7 @@ export default function ScanPage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "user" } },
+        video: { facingMode: { ideal: mode } },
         audio: false,
       });
       streamRef.current = stream;
@@ -254,7 +256,20 @@ export default function ScanPage() {
       console.error(err);
       setStatus("denied");
     }
-  }, []);
+  }, [facingMode]);
+
+  const handleFacingModeChange = useCallback(
+    (mode: CameraFacing) => {
+      setFacingMode(mode);
+      // If the camera is already running, restart it with the new facing
+      // mode right away instead of waiting for the next visit to this page.
+      if (streamRef.current) {
+        stopCamera();
+        startCamera(mode);
+      }
+    },
+    [stopCamera, startCamera],
+  );
 
   useEffect(() => stopCamera, [stopCamera]);
 
@@ -281,7 +296,30 @@ export default function ScanPage() {
         </h1>
       </header>
 
-      <div className="relative z-10 flex justify-center px-4">
+      <div className="relative z-10 flex flex-col items-center gap-2 px-4">
+        <div className="flex gap-1 rounded-full bg-white/90 p-1 shadow-sm backdrop-blur">
+          <button
+            onClick={() => handleFacingModeChange("user")}
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+              facingMode === "user"
+                ? "bg-emerald-500 text-white"
+                : "text-slate-600"
+            }`}
+          >
+            インカメ
+          </button>
+          <button
+            onClick={() => handleFacingModeChange("environment")}
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+              facingMode === "environment"
+                ? "bg-emerald-500 text-white"
+                : "text-slate-600"
+            }`}
+          >
+            アウトカメラ
+          </button>
+        </div>
+
         <div className="flex gap-1 rounded-full bg-white/90 p-1 shadow-sm backdrop-blur">
           <button
             onClick={() => setSoundMode("beep")}
@@ -345,7 +383,7 @@ export default function ScanPage() {
             ボタンを押してカメラを起動し、QRコードを読み取ります。
           </p>
           <button
-            onClick={startCamera}
+            onClick={() => startCamera()}
             className="flex items-center gap-2 rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20"
           >
             <Camera className="h-4 w-4" />
@@ -381,7 +419,7 @@ export default function ScanPage() {
             カメラへのアクセスが許可されていません。ブラウザの設定を確認してから、もう一度試してください。
           </p>
           <button
-            onClick={startCamera}
+            onClick={() => startCamera()}
             className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20"
           >
             もう一度試す
