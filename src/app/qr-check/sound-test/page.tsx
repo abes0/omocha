@@ -47,6 +47,21 @@ const SOUND_OPTIONS: SoundOption[] = [
       { type: "triangle", frequency: 1200, frequencyEnd: 2200, duration: 0.12 },
     ],
   },
+  {
+    id: "denso-guess",
+    label: "⑥ デンソー風（推測・クリア）",
+    description: "サイン波で純粋・短め。ハンディスキャナー系の音を推測で再現",
+    segments: [{ type: "sine", frequency: 2700, duration: 0.07 }],
+  },
+  {
+    id: "contactless-payment",
+    label: "⑦ タッチ決済風",
+    description: "クレジットカードのタッチ決済端末のような、上昇する2音チャイム",
+    segments: [
+      { type: "sine", frequency: 1318.5, duration: 0.08, gapAfter: 0.02 },
+      { type: "sine", frequency: 1975.5, duration: 0.12 },
+    ],
+  },
 ];
 
 export default function SoundTestPage() {
