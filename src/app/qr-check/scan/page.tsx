@@ -33,17 +33,43 @@ const MISMATCH_TONE: ToneSegment[] = [
   { type: "sine", frequency: 220, duration: 0.3 },
 ];
 
+// この2つを同時に再生して重ねる。
+const REGISTER_SOUND_SRC = "/sounds/register_sound.mp3";
+const PAYPAY_SOUND_SRC = "/sounds/paypay_sound.m4a";
+// paypay音声はファイル内の0.9秒地点(実際の音声が始まる位置)から再生する。
+const PAYPAY_START_OFFSET_SEC = 0.9;
+// レジ音は最初小さく→だんだん大きくするが、最大でも半分の音量までに抑える。
+const REGISTER_MIN_VOLUME = 0.05;
+const REGISTER_MAX_VOLUME = 0.5;
+
+function rampRegisterVolume(audio: HTMLAudioElement) {
+  const step = () => {
+    if (audio.paused || audio.ended) return;
+    const duration = audio.duration || 0.3;
+    const progress = Math.min(audio.currentTime / duration, 1);
+    audio.volume =
+      REGISTER_MIN_VOLUME + (REGISTER_MAX_VOLUME - REGISTER_MIN_VOLUME) * progress;
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+type SoundMode = "beep" | "payment";
+
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const registerAudioRef = useRef<HTMLAudioElement | null>(null);
+  const paypayAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
   const tickRef = useRef<() => void>(() => {});
 
   const [status, setStatus] = useState<Status>("idle");
   const [currentUrl, setCurrentUrl] = useState("");
+  const [soundMode, setSoundMode] = useState<SoundMode>("beep");
 
   const playBeep = useCallback((ok: boolean) => {
     const AudioCtx =
@@ -54,6 +80,22 @@ export default function ScanPage() {
     audioCtxRef.current ??= new AudioCtx();
     playTonePattern(audioCtxRef.current, ok ? MATCH_TONE : MISMATCH_TONE);
   }, []);
+
+  const playMatchSound = useCallback(() => {
+    const registerAudio = registerAudioRef.current;
+    const paypayAudio = paypayAudioRef.current;
+    if (soundMode === "payment" && registerAudio && paypayAudio) {
+      registerAudio.currentTime = 0;
+      registerAudio.volume = REGISTER_MIN_VOLUME;
+      registerAudio.play().catch(() => {});
+      rampRegisterVolume(registerAudio);
+
+      paypayAudio.currentTime = PAYPAY_START_OFFSET_SEC;
+      paypayAudio.play().catch(() => {});
+      return;
+    }
+    playBeep(true);
+  }, [soundMode, playBeep]);
 
   const stopCamera = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -86,7 +128,7 @@ export default function ScanPage() {
 
             if (isMatch) {
               setStatus("matched");
-              playBeep(true);
+              playMatchSound();
               navigator.vibrate?.(80);
             } else {
               setStatus("mismatch");
@@ -100,7 +142,7 @@ export default function ScanPage() {
       }
     }
     rafRef.current = requestAnimationFrame(() => tickRef.current());
-  }, [playBeep]);
+  }, [playBeep, playMatchSound]);
 
   useEffect(() => {
     tickRef.current = tick;
@@ -131,6 +173,27 @@ export default function ScanPage() {
       if (audioCtxRef.current.state === "suspended") {
         audioCtxRef.current.resume().catch(() => {});
       }
+    }
+
+    // Same idea for the payment sound files: play+pause each once (muted, so
+    // it's inaudible) while we still have the gesture, so later programmatic
+    // play() calls from inside the scan loop are allowed to make sound.
+    registerAudioRef.current ??= new Audio(REGISTER_SOUND_SRC);
+    paypayAudioRef.current ??= new Audio(PAYPAY_SOUND_SRC);
+    const registerAudio = registerAudioRef.current;
+    const paypayAudio = paypayAudioRef.current;
+    for (const audio of [registerAudio, paypayAudio]) {
+      audio.muted = true;
+      audio
+        .play()
+        .then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+        })
+        .catch(() => {
+          audio.muted = false;
+        });
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -184,6 +247,31 @@ export default function ScanPage() {
           QRスキャン
         </h1>
       </header>
+
+      <div className="relative z-10 flex justify-center px-4">
+        <div className="flex gap-1 rounded-full bg-white/90 p-1 shadow-sm backdrop-blur">
+          <button
+            onClick={() => setSoundMode("beep")}
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+              soundMode === "beep"
+                ? "bg-emerald-500 text-white"
+                : "text-slate-600"
+            }`}
+          >
+            ピー音
+          </button>
+          <button
+            onClick={() => setSoundMode("payment")}
+            className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+              soundMode === "payment"
+                ? "bg-emerald-500 text-white"
+                : "text-slate-600"
+            }`}
+          >
+            決済音
+          </button>
+        </div>
+      </div>
 
       {(status === "scanning" ||
         status === "mismatch" ||
