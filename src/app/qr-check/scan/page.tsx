@@ -41,8 +41,8 @@ const PAYPAY_START_OFFSET_SEC = 0.95;
 const PAYPAY_VOLUME = 1;
 // レジ音は最初小さく→だんだん大きくするが、最大でも0.2までに抑える。
 // (HTMLAudioElement.volumeはiOS Safariでは無視されるため、GainNode経由で制御する)
-const REGISTER_MIN_VOLUME = 0.01;
-const REGISTER_MAX_VOLUME = 0.05;
+const REGISTER_MIN_VOLUME = 0.00;
+const REGISTER_MAX_VOLUME = 0.01;
 
 function rampRegisterGain(ctx: AudioContext, gainNode: GainNode, duration: number) {
   const now = ctx.currentTime;
