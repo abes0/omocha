@@ -38,6 +38,8 @@ const REGISTER_SOUND_SRC = "/sounds/register_sound.mp3";
 const PAYPAY_SOUND_SRC = "/sounds/paypay_sound.m4a";
 // paypay音声はファイル内の0.9秒地点(実際の音声が始まる位置)から再生する。
 const PAYPAY_START_OFFSET_SEC = 0.9;
+// 決済音(paypay)が大きすぎたため、4分の1の音量に抑える。
+const PAYPAY_VOLUME = 0.25;
 // レジ音は最初小さく→だんだん大きくするが、最大でも半分の音量までに抑える。
 const REGISTER_MIN_VOLUME = 0.05;
 const REGISTER_MAX_VOLUME = 0.5;
@@ -91,6 +93,7 @@ export default function ScanPage() {
       rampRegisterVolume(registerAudio);
 
       paypayAudio.currentTime = PAYPAY_START_OFFSET_SEC;
+      paypayAudio.volume = PAYPAY_VOLUME;
       paypayAudio.play().catch(() => {});
       return;
     }
