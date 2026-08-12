@@ -5,6 +5,7 @@ import jsQR from "jsqr";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Camera, Loader2, XCircle } from "lucide-react";
 import { normalizeUrl } from "@/lib/url";
+import { playTonePattern, type ToneSegment } from "@/lib/beep";
 
 type Status =
   | "idle"
@@ -17,6 +18,20 @@ type Status =
   | "insecure";
 
 const BEEP_COOLDOWN_MS = 3000;
+
+// サステイン型・0.15s・3000Hz(+6000Hzの弱い倍音)で聞き比べた結果、決定した音。
+const MATCH_TONE: ToneSegment[] = [
+  {
+    type: "sine",
+    frequency: 3000,
+    duration: 0.15,
+    envelope: "sustain",
+    harmonics: [{ frequency: 6000, gain: 0.35 }],
+  },
+];
+const MISMATCH_TONE: ToneSegment[] = [
+  { type: "sine", frequency: 220, duration: 0.3 },
+];
 
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -36,25 +51,8 @@ export default function ScanPage() {
       (window as unknown as { webkitAudioContext: typeof AudioContext })
         .webkitAudioContext;
     if (!AudioCtx) return;
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioCtx();
-    }
-    const ctx = audioCtxRef.current;
-    if (ctx.state === "suspended") ctx.resume();
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = ok ? 1760 : 220;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(
-      0.0001,
-      ctx.currentTime + (ok ? 0.35 : 0.28),
-    );
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + (ok ? 0.4 : 0.3));
+    audioCtxRef.current ??= new AudioCtx();
+    playTonePattern(audioCtxRef.current, ok ? MATCH_TONE : MISMATCH_TONE);
   }, []);
 
   const stopCamera = useCallback(() => {
