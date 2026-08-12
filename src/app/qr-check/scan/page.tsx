@@ -3,14 +3,7 @@
 import Link from "next/link";
 import jsQR from "jsqr";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  Camera,
-  CheckCircle2,
-  Loader2,
-  RotateCcw,
-  XCircle,
-} from "lucide-react";
+import { ArrowLeft, Camera, Loader2, XCircle } from "lucide-react";
 import { normalizeUrl } from "@/lib/url";
 
 type Status =
@@ -29,12 +22,10 @@ export default function ScanPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef<number | null>(null);
-  const matchedRef = useRef(false);
   const lastCodeRef = useRef<string | null>(null);
   const tickRef = useRef<() => void>(() => {});
 
   const [status, setStatus] = useState<Status>("idle");
-  const [detected, setDetected] = useState<string | null>(null);
   const [currentUrl, setCurrentUrl] = useState("");
 
   const playBeep = useCallback((ok: boolean) => {
@@ -52,16 +43,16 @@ export default function ScanPage() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
-    osc.frequency.value = ok ? 880 : 220;
+    osc.frequency.value = ok ? 1760 : 220;
     gain.gain.setValueAtTime(0.0001, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(
       0.0001,
-      ctx.currentTime + (ok ? 0.18 : 0.28),
+      ctx.currentTime + (ok ? 0.35 : 0.28),
     );
     osc.connect(gain).connect(ctx.destination);
     osc.start();
-    osc.stop(ctx.currentTime + (ok ? 0.2 : 0.3));
+    osc.stop(ctx.currentTime + (ok ? 0.4 : 0.3));
   }, []);
 
   const stopCamera = useCallback(() => {
@@ -74,7 +65,7 @@ export default function ScanPage() {
   const tick = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || matchedRef.current) return;
+    if (!video || !canvas) return;
 
     if (video.readyState === video.HAVE_ENOUGH_DATA) {
       canvas.width = video.videoWidth;
@@ -90,30 +81,27 @@ export default function ScanPage() {
         if (code && code.data) {
           if (code.data !== lastCodeRef.current) {
             lastCodeRef.current = code.data;
-            setDetected(code.data);
             const isMatch =
               normalizeUrl(code.data) === normalizeUrl(window.location.href);
 
             if (isMatch) {
-              matchedRef.current = true;
               setStatus("matched");
               playBeep(true);
               navigator.vibrate?.(80);
-              stopCamera();
-              return;
+            } else {
+              setStatus("mismatch");
+              playBeep(false);
+              navigator.vibrate?.([40, 40, 40]);
             }
-            setStatus("mismatch");
-            playBeep(false);
-            navigator.vibrate?.([40, 40, 40]);
           }
         } else {
           lastCodeRef.current = null;
-          if (!matchedRef.current) setStatus("scanning");
+          setStatus("scanning");
         }
       }
     }
     rafRef.current = requestAnimationFrame(() => tickRef.current());
-  }, [playBeep, stopCamera]);
+  }, [playBeep]);
 
   useEffect(() => {
     tickRef.current = tick;
@@ -163,9 +151,7 @@ export default function ScanPage() {
         await videoRef.current.play();
       }
       canvasRef.current ??= document.createElement("canvas");
-      matchedRef.current = false;
       lastCodeRef.current = null;
-      setDetected(null);
       setCurrentUrl(window.location.href);
       setStatus("scanning");
       rafRef.current = requestAnimationFrame(() => tickRef.current());
@@ -198,18 +184,26 @@ export default function ScanPage() {
         <h1 className="text-base font-semibold drop-shadow">QRスキャン</h1>
       </header>
 
-      {(status === "scanning" || status === "mismatch") && (
+      {(status === "scanning" ||
+        status === "mismatch" ||
+        status === "matched") && (
         <>
           <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-6 px-8">
             <div
               className={`h-64 w-64 rounded-3xl border-4 transition-colors ${
-                status === "mismatch" ? "border-rose-400" : "border-emerald-300"
+                status === "mismatch"
+                  ? "border-rose-400"
+                  : status === "matched"
+                    ? "border-emerald-400"
+                    : "border-emerald-300/60"
               }`}
             />
             <p className="rounded-full bg-black/50 px-4 py-2 text-center text-sm backdrop-blur">
               {status === "mismatch"
                 ? "ちがうQRコードです"
-                : "URLのQRコードを枠内に映してください"}
+                : status === "matched"
+                  ? "ピッ！ 一致しました"
+                  : "URLのQRコードを枠内に映してください"}
             </p>
           </div>
           {currentUrl && (
@@ -279,27 +273,6 @@ export default function ScanPage() {
           <p className="text-sm text-slate-200">
             お使いのブラウザはカメラ機能に対応していません。
           </p>
-        </div>
-      )}
-
-      {status === "matched" && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-emerald-500 px-8 text-center text-slate-950">
-          <CheckCircle2 className="h-20 w-20" />
-          <div>
-            <p className="text-2xl font-bold">ピッ！ 一致しました</p>
-            {detected && (
-              <p className="mt-1 max-w-xs break-all text-sm text-slate-900/70">
-                {detected}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={startCamera}
-            className="mt-2 flex items-center gap-2 rounded-full bg-slate-950 px-6 py-3 text-sm font-semibold text-white"
-          >
-            <RotateCcw className="h-4 w-4" />
-            もう一度スキャンする
-          </button>
         </div>
       )}
     </div>
