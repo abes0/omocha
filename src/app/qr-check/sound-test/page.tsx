@@ -11,55 +11,146 @@ type SoundOption = {
   segments: ToneSegment[];
 };
 
-const SOUND_OPTIONS: SoundOption[] = [
+type SoundGroup = {
+  title: string;
+  options: SoundOption[];
+};
+
+// 実測でバーコードスキャナー音の基音が約3,000Hz(F#7付近)、
+// 2倍音(6,000Hz)も強く出ているとの解析結果をもとに構成。
+const BASE_FREQ = 3000;
+const HARMONIC_FREQ = BASE_FREQ * 2;
+
+const SOUND_GROUPS: SoundGroup[] = [
   {
-    id: "classic-square",
-    label: "① 定番スクエア",
-    description: "矩形波でシンプルな「ピッ」",
-    segments: [{ type: "square", frequency: 2000, duration: 0.09 }],
-  },
-  {
-    id: "compact-high",
-    label: "② 小型レジ風（高め）",
-    description: "小型スーパーのレジのような高くて短い音",
-    segments: [{ type: "square", frequency: 2600, duration: 0.06 }],
-  },
-  {
-    id: "double-beep",
-    label: "③ ダブルピッ",
-    description: "「ピピッ」と2回連続で鳴る",
-    segments: [
-      { type: "square", frequency: 1800, duration: 0.05, gapAfter: 0.05 },
-      { type: "square", frequency: 1800, duration: 0.05 },
+    title: "単発「ピッ」",
+    options: [
+      {
+        id: "pi-sine-short",
+        label: "サイン波・短め (0.05s)",
+        description: "3000Hzの純粋なサイン波",
+        segments: [{ type: "sine", frequency: BASE_FREQ, duration: 0.05 }],
+      },
+      {
+        id: "pi-square-short",
+        label: "矩形波・短め (0.05s)",
+        description: "3000Hzの矩形波。倍音を多く含みやや硬い音",
+        segments: [{ type: "square", frequency: BASE_FREQ, duration: 0.05 }],
+      },
+      {
+        id: "pi-harmonic-short",
+        label: "サイン波+倍音・短め (0.05s)",
+        description: "3000Hz + 6000Hz(弱め)を重ねた音",
+        segments: [
+          {
+            type: "sine",
+            frequency: BASE_FREQ,
+            duration: 0.05,
+            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
+          },
+        ],
+      },
+      {
+        id: "pi-sine-mid",
+        label: "サイン波・標準 (0.08s)",
+        description: "3000Hzのサイン波、やや長め",
+        segments: [{ type: "sine", frequency: BASE_FREQ, duration: 0.08 }],
+      },
+      {
+        id: "pi-harmonic-mid",
+        label: "サイン波+倍音・標準 (0.08s)",
+        description: "3000Hz + 6000Hz(弱め)、やや長め",
+        segments: [
+          {
+            type: "sine",
+            frequency: BASE_FREQ,
+            duration: 0.08,
+            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
+          },
+        ],
+      },
     ],
   },
   {
-    id: "solid-low",
-    label: "④ しっかり低め",
-    description: "少し低めで存在感のある「ピー」",
-    segments: [{ type: "square", frequency: 1500, duration: 0.15 }],
-  },
-  {
-    id: "rising-chirp",
-    label: "⑤ 上昇チャープ",
-    description: "「ピロッ」と音程が上がる",
-    segments: [
-      { type: "triangle", frequency: 1200, frequencyEnd: 2200, duration: 0.12 },
+    title: "連続「ピピ」",
+    options: [
+      {
+        id: "pipi-sine",
+        label: "サイン波・ダブル",
+        description: "3000Hzのサイン波を2回",
+        segments: [
+          { type: "sine", frequency: BASE_FREQ, duration: 0.05, gapAfter: 0.05 },
+          { type: "sine", frequency: BASE_FREQ, duration: 0.05 },
+        ],
+      },
+      {
+        id: "pipi-square",
+        label: "矩形波・ダブル",
+        description: "3000Hzの矩形波を2回",
+        segments: [
+          { type: "square", frequency: BASE_FREQ, duration: 0.05, gapAfter: 0.05 },
+          { type: "square", frequency: BASE_FREQ, duration: 0.05 },
+        ],
+      },
+      {
+        id: "pipi-harmonic",
+        label: "サイン波+倍音・ダブル",
+        description: "3000Hz + 6000Hz(弱め)を2回",
+        segments: [
+          {
+            type: "sine",
+            frequency: BASE_FREQ,
+            duration: 0.05,
+            gapAfter: 0.05,
+            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
+          },
+          {
+            type: "sine",
+            frequency: BASE_FREQ,
+            duration: 0.05,
+            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
+          },
+        ],
+      },
+      {
+        id: "pipi-tight",
+        label: "サイン波・詰め気味",
+        description: "間隔を短くした「ピピッ」",
+        segments: [
+          { type: "sine", frequency: BASE_FREQ, duration: 0.04, gapAfter: 0.03 },
+          { type: "sine", frequency: BASE_FREQ, duration: 0.04 },
+        ],
+      },
     ],
   },
   {
-    id: "denso-guess",
-    label: "⑥ デンソー風（推測・クリア）",
-    description: "サイン波で純粋・短め。ハンディスキャナー系の音を推測で再現",
-    segments: [{ type: "sine", frequency: 2700, duration: 0.07 }],
-  },
-  {
-    id: "contactless-payment",
-    label: "⑦ タッチ決済風",
-    description: "クレジットカードのタッチ決済端末のような、上昇する2音チャイム",
-    segments: [
-      { type: "sine", frequency: 1318.5, duration: 0.08, gapAfter: 0.02 },
-      { type: "sine", frequency: 1975.5, duration: 0.12 },
+    title: "長め「ピー」",
+    options: [
+      {
+        id: "pii-sine",
+        label: "サイン波・長め (0.3s)",
+        description: "3000Hzのサイン波を長く伸ばす",
+        segments: [{ type: "sine", frequency: BASE_FREQ, duration: 0.3 }],
+      },
+      {
+        id: "pii-square",
+        label: "矩形波・長め (0.3s)",
+        description: "3000Hzの矩形波を長く伸ばす",
+        segments: [{ type: "square", frequency: BASE_FREQ, duration: 0.3 }],
+      },
+      {
+        id: "pii-harmonic",
+        label: "サイン波+倍音・長め (0.3s)",
+        description: "3000Hz + 6000Hz(弱め)を長く伸ばす",
+        segments: [
+          {
+            type: "sine",
+            frequency: BASE_FREQ,
+            duration: 0.3,
+            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
+          },
+        ],
+      },
     ],
   },
 ];
@@ -78,35 +169,42 @@ export default function SoundTestPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-6 px-6 py-12">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-6 py-12">
       <div className="text-center">
         <h1 className="text-xl font-bold text-slate-900">音の聞き比べ</h1>
         <p className="mt-1 text-sm text-slate-500">
-          ボタンを押すとそれぞれの「ピッ」音を再生します
+          基音3000Hz(実測値)をベースにした候補です
         </p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        {SOUND_OPTIONS.map((option) => (
-          <button
-            key={option.id}
-            onClick={() => play(option.segments)}
-            className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition active:scale-[0.98]"
-          >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-              <Volume2 className="h-5 w-5" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-base font-semibold text-slate-900">
-                {option.label}
-              </span>
-              <span className="text-xs text-slate-500">
-                {option.description}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
+      {SOUND_GROUPS.map((group) => (
+        <div key={group.title} className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-slate-600">
+            {group.title}
+          </h2>
+          <div className="flex flex-col gap-3">
+            {group.options.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => play(option.segments)}
+                className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition active:scale-[0.98]"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                  <Volume2 className="h-5 w-5" />
+                </span>
+                <span className="flex flex-col">
+                  <span className="text-base font-semibold text-slate-900">
+                    {option.label}
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    {option.description}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
