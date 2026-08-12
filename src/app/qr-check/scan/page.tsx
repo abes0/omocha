@@ -106,6 +106,21 @@ export default function ScanPage() {
     rafRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+
+    // Otherwise, leaving this screen mid-playback (e.g. right after a match)
+    // lets the old audio elements keep playing in the background, since
+    // nothing else ever stops them. That leftover sound can then surface
+    // later, e.g. right as "スキャンを開始する" is pressed on a fresh visit.
+    const registerAudio = registerAudioRef.current;
+    if (registerAudio) {
+      registerAudio.pause();
+      registerAudio.currentTime = 0;
+    }
+    const paypayAudio = paypayAudioRef.current;
+    if (paypayAudio) {
+      paypayAudio.pause();
+      paypayAudio.currentTime = 0;
+    }
   }, []);
 
   const tick = useCallback(() => {
