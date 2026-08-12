@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#020617",
+  themeColor: "#f8fafc",
 };
 
 export default function QrCheckLayout({
@@ -18,7 +18,7 @@ export default function QrCheckLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-dvh w-full bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-50 print:bg-white print:text-slate-900">
+    <div className="min-h-dvh w-full bg-gradient-to-b from-white via-sky-50 to-emerald-50 text-slate-900 print:bg-white">
       {children}
     </div>
   );

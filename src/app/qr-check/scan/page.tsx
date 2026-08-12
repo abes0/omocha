@@ -164,7 +164,7 @@ export default function ScanPage() {
   useEffect(() => stopCamera, [stopCamera]);
 
   return (
-    <div className="relative min-h-dvh w-full overflow-hidden bg-black text-white">
+    <div className="relative min-h-dvh w-full overflow-hidden bg-slate-50 text-slate-900">
       <video
         ref={videoRef}
         className="absolute inset-0 h-full w-full object-cover"
@@ -172,16 +172,18 @@ export default function ScanPage() {
         playsInline
         autoPlay
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-white/60" />
 
       <header className="relative z-10 flex items-center gap-3 p-4">
         <Link
           href="/qr-check"
-          className="rounded-full bg-black/40 p-2 backdrop-blur"
+          className="rounded-full bg-white/90 p-2 text-slate-700 shadow-sm backdrop-blur"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-base font-semibold drop-shadow">QRスキャン</h1>
+        <h1 className="rounded-full bg-white/90 px-3 py-1.5 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur">
+          QRスキャン
+        </h1>
       </header>
 
       {(status === "scanning" ||
@@ -192,13 +194,13 @@ export default function ScanPage() {
             <div
               className={`h-64 w-64 rounded-3xl border-4 transition-colors ${
                 status === "mismatch"
-                  ? "border-rose-400"
+                  ? "border-rose-500"
                   : status === "matched"
-                    ? "border-emerald-400"
-                    : "border-emerald-300/60"
+                    ? "border-emerald-500"
+                    : "border-white/80"
               }`}
             />
-            <p className="rounded-full bg-black/50 px-4 py-2 text-center text-sm backdrop-blur">
+            <p className="rounded-full bg-white/90 px-4 py-2 text-center text-sm font-medium text-slate-900 shadow-sm backdrop-blur">
               {status === "mismatch"
                 ? "ちがうQRコードです"
                 : status === "matched"
@@ -208,7 +210,7 @@ export default function ScanPage() {
           </div>
           {currentUrl && (
             <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 px-6">
-              <p className="truncate rounded-full bg-black/50 px-4 py-2 text-center text-xs text-slate-300 backdrop-blur">
+              <p className="truncate rounded-full bg-white/90 px-4 py-2 text-center text-xs text-slate-600 shadow-sm backdrop-blur">
                 比較対象: {currentUrl}
               </p>
             </div>
@@ -218,13 +220,13 @@ export default function ScanPage() {
 
       {status === "idle" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 px-8 text-center">
-          <Camera className="h-12 w-12 text-slate-200" />
-          <p className="text-sm text-slate-300">
+          <Camera className="h-12 w-12 text-slate-400" />
+          <p className="text-sm text-slate-600">
             ボタンを押してカメラを起動し、QRコードを読み取ります。
           </p>
           <button
             onClick={startCamera}
-            className="flex items-center gap-2 rounded-full bg-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950"
+            className="flex items-center gap-2 rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20"
           >
             <Camera className="h-4 w-4" />
             スキャンを開始する
@@ -234,15 +236,15 @@ export default function ScanPage() {
 
       {status === "requesting" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-200" />
-          <p className="text-sm text-slate-300">カメラを起動しています…</p>
+          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          <p className="text-sm text-slate-600">カメラを起動しています…</p>
         </div>
       )}
 
       {status === "insecure" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-8 text-center">
-          <XCircle className="h-12 w-12 text-rose-400" />
-          <p className="text-sm text-slate-200">
+          <XCircle className="h-12 w-12 text-rose-500" />
+          <p className="text-sm text-slate-700">
             カメラAPIはHTTPS(またはPC自体でのlocalhost)でのみ利用できます。
             <br />
             スマホからPCのIPアドレスへ「http://」で直接アクセスしている場合、この制限に該当します。
@@ -254,13 +256,13 @@ export default function ScanPage() {
 
       {status === "denied" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-8 text-center">
-          <XCircle className="h-12 w-12 text-rose-400" />
-          <p className="text-sm text-slate-200">
+          <XCircle className="h-12 w-12 text-rose-500" />
+          <p className="text-sm text-slate-700">
             カメラへのアクセスが許可されていません。ブラウザの設定を確認してから、もう一度試してください。
           </p>
           <button
             onClick={startCamera}
-            className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-950"
+            className="rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20"
           >
             もう一度試す
           </button>
@@ -269,8 +271,8 @@ export default function ScanPage() {
 
       {status === "unsupported" && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-8 text-center">
-          <XCircle className="h-12 w-12 text-rose-400" />
-          <p className="text-sm text-slate-200">
+          <XCircle className="h-12 w-12 text-rose-500" />
+          <p className="text-sm text-slate-700">
             お使いのブラウザはカメラ機能に対応していません。
           </p>
         </div>
