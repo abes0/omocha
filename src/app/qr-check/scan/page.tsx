@@ -40,19 +40,18 @@ const PAYPAY_SOUND_SRC = "/sounds/paypay_sound.m4a";
 const PAYPAY_START_OFFSET_SEC = 0.95;
 const PAYPAY_VOLUME = 1;
 // レジ音は最初小さく→だんだん大きくするが、最大でも0.2までに抑える。
-const REGISTER_MIN_VOLUME = 0.001;
-const REGISTER_MAX_VOLUME = 0.005;
+// (HTMLAudioElement.volumeはiOS Safariでは無視されるため、GainNode経由で制御する)
+const REGISTER_MIN_VOLUME = 0.05;
+const REGISTER_MAX_VOLUME = 0.1;
 
-function rampRegisterVolume(audio: HTMLAudioElement) {
-  const step = () => {
-    if (audio.paused || audio.ended) return;
-    const duration = audio.duration || 0.3;
-    const progress = Math.min(audio.currentTime / duration, 1);
-    audio.volume =
-      REGISTER_MIN_VOLUME + (REGISTER_MAX_VOLUME - REGISTER_MIN_VOLUME) * progress;
-    requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
+function rampRegisterGain(ctx: AudioContext, gainNode: GainNode, duration: number) {
+  const now = ctx.currentTime;
+  gainNode.gain.cancelScheduledValues(now);
+  gainNode.gain.setValueAtTime(REGISTER_MIN_VOLUME, now);
+  gainNode.gain.linearRampToValueAtTime(
+    REGISTER_MAX_VOLUME,
+    now + Math.max(duration, 0.05),
+  );
 }
 
 type SoundMode = "beep" | "payment";
@@ -63,6 +62,8 @@ export default function ScanPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const registerAudioRef = useRef<HTMLAudioElement | null>(null);
+  const registerGainRef = useRef<GainNode | null>(null);
+  const registerSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const paypayAudioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef(0);
@@ -83,13 +84,14 @@ export default function ScanPage() {
   }, []);
 
   const playMatchSound = useCallback(() => {
+    const ctx = audioCtxRef.current;
     const registerAudio = registerAudioRef.current;
+    const registerGain = registerGainRef.current;
     const paypayAudio = paypayAudioRef.current;
-    if (soundMode === "payment" && registerAudio && paypayAudio) {
+    if (soundMode === "payment" && ctx && registerAudio && registerGain && paypayAudio) {
       registerAudio.currentTime = 0;
-      registerAudio.volume = REGISTER_MIN_VOLUME;
+      rampRegisterGain(ctx, registerGain, registerAudio.duration || 0.3);
       registerAudio.play().catch(() => {});
-      rampRegisterVolume(registerAudio);
 
       paypayAudio.currentTime = PAYPAY_START_OFFSET_SEC;
       paypayAudio.volume = PAYPAY_VOLUME;
@@ -184,6 +186,20 @@ export default function ScanPage() {
     paypayAudioRef.current ??= new Audio(PAYPAY_SOUND_SRC);
     const registerAudio = registerAudioRef.current;
     const paypayAudio = paypayAudioRef.current;
+
+    // Route the register sound through a GainNode instead of relying on
+    // HTMLAudioElement.volume, which iOS Safari silently ignores.
+    // createMediaElementSource() may only be called once per element ever,
+    // so this wiring happens exactly once (guarded by registerGainRef).
+    if (audioCtxRef.current && !registerGainRef.current) {
+      const ctx = audioCtxRef.current;
+      const source = ctx.createMediaElementSource(registerAudio);
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = REGISTER_MIN_VOLUME;
+      source.connect(gainNode).connect(ctx.destination);
+      registerSourceRef.current = source;
+      registerGainRef.current = gainNode;
+    }
     for (const audio of [registerAudio, paypayAudio]) {
       audio.muted = true;
       audio
