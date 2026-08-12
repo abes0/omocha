@@ -50,7 +50,7 @@ export default function PrintPage() {
         <div className="flex w-full flex-1 flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl print:min-h-dvh print:w-full print:flex-none print:rounded-none print:border-none print:shadow-none">
           {svg ? (
             <div
-              className="aspect-square w-full max-w-xs [&_svg]:h-full [&_svg]:w-full print:w-[3cm] print:max-w-none"
+              className="aspect-square w-full max-w-xs [&_svg]:h-full [&_svg]:w-full print:w-[2cm] print:max-w-none"
               dangerouslySetInnerHTML={{ __html: svg }}
             />
           ) : (
