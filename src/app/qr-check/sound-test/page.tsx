@@ -16,140 +16,71 @@ type SoundGroup = {
   options: SoundOption[];
 };
 
-// 実測でバーコードスキャナー音の基音が約3,000Hz(F#7付近)、
-// 2倍音(6,000Hz)も強く出ているとの解析結果をもとに構成。
+// 前回「サイン波+倍音・長め(0.3s)」が一番近いとのことだったので、
+// その音色(3000Hz + 6000Hzの弱い倍音)を軸に、エンベロープの違い
+// (だんだん強くなるか、終始一定の音量か)を比較する。
 const BASE_FREQ = 3000;
 const HARMONIC_FREQ = BASE_FREQ * 2;
 
+function harmonicTone(
+  duration: number,
+  envelope: "decay" | "sustain" | "rise",
+): ToneSegment[] {
+  return [
+    {
+      type: "sine",
+      frequency: BASE_FREQ,
+      duration,
+      envelope,
+      harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
+    },
+  ];
+}
+
 const SOUND_GROUPS: SoundGroup[] = [
   {
-    title: "単発「ピッ」",
+    title: "だんだん強くなる型（最初が弱く、最後が一番強い）",
     options: [
       {
-        id: "pi-sine-short",
-        label: "サイン波・短め (0.05s)",
-        description: "3000Hzの純粋なサイン波",
-        segments: [{ type: "sine", frequency: BASE_FREQ, duration: 0.05 }],
+        id: "rise-010",
+        label: "0.10s",
+        description: "弱く始まり、鳴り終わりが最も強い",
+        segments: harmonicTone(0.1, "rise"),
       },
       {
-        id: "pi-square-short",
-        label: "矩形波・短め (0.05s)",
-        description: "3000Hzの矩形波。倍音を多く含みやや硬い音",
-        segments: [{ type: "square", frequency: BASE_FREQ, duration: 0.05 }],
+        id: "rise-015",
+        label: "0.15s",
+        description: "弱く始まり、鳴り終わりが最も強い",
+        segments: harmonicTone(0.15, "rise"),
       },
       {
-        id: "pi-harmonic-short",
-        label: "サイン波+倍音・短め (0.05s)",
-        description: "3000Hz + 6000Hz(弱め)を重ねた音",
-        segments: [
-          {
-            type: "sine",
-            frequency: BASE_FREQ,
-            duration: 0.05,
-            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
-          },
-        ],
-      },
-      {
-        id: "pi-sine-mid",
-        label: "サイン波・標準 (0.08s)",
-        description: "3000Hzのサイン波、やや長め",
-        segments: [{ type: "sine", frequency: BASE_FREQ, duration: 0.08 }],
-      },
-      {
-        id: "pi-harmonic-mid",
-        label: "サイン波+倍音・標準 (0.08s)",
-        description: "3000Hz + 6000Hz(弱め)、やや長め",
-        segments: [
-          {
-            type: "sine",
-            frequency: BASE_FREQ,
-            duration: 0.08,
-            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
-          },
-        ],
+        id: "rise-020",
+        label: "0.20s",
+        description: "弱く始まり、鳴り終わりが最も強い",
+        segments: harmonicTone(0.2, "rise"),
       },
     ],
   },
   {
-    title: "連続「ピピ」",
+    title: "サステイン型（一定音量を保って最後にスッと切れる）",
     options: [
       {
-        id: "pipi-sine",
-        label: "サイン波・ダブル",
-        description: "3000Hzのサイン波を2回",
-        segments: [
-          { type: "sine", frequency: BASE_FREQ, duration: 0.05, gapAfter: 0.05 },
-          { type: "sine", frequency: BASE_FREQ, duration: 0.05 },
-        ],
+        id: "sustain-010",
+        label: "0.10s",
+        description: "ほぼ一定の音量で鳴り、最後だけ短く消える",
+        segments: harmonicTone(0.1, "sustain"),
       },
       {
-        id: "pipi-square",
-        label: "矩形波・ダブル",
-        description: "3000Hzの矩形波を2回",
-        segments: [
-          { type: "square", frequency: BASE_FREQ, duration: 0.05, gapAfter: 0.05 },
-          { type: "square", frequency: BASE_FREQ, duration: 0.05 },
-        ],
+        id: "sustain-015",
+        label: "0.15s",
+        description: "ほぼ一定の音量で鳴り、最後だけ短く消える",
+        segments: harmonicTone(0.15, "sustain"),
       },
       {
-        id: "pipi-harmonic",
-        label: "サイン波+倍音・ダブル",
-        description: "3000Hz + 6000Hz(弱め)を2回",
-        segments: [
-          {
-            type: "sine",
-            frequency: BASE_FREQ,
-            duration: 0.05,
-            gapAfter: 0.05,
-            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
-          },
-          {
-            type: "sine",
-            frequency: BASE_FREQ,
-            duration: 0.05,
-            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
-          },
-        ],
-      },
-      {
-        id: "pipi-tight",
-        label: "サイン波・詰め気味",
-        description: "間隔を短くした「ピピッ」",
-        segments: [
-          { type: "sine", frequency: BASE_FREQ, duration: 0.04, gapAfter: 0.03 },
-          { type: "sine", frequency: BASE_FREQ, duration: 0.04 },
-        ],
-      },
-    ],
-  },
-  {
-    title: "長め「ピー」",
-    options: [
-      {
-        id: "pii-sine",
-        label: "サイン波・長め (0.3s)",
-        description: "3000Hzのサイン波を長く伸ばす",
-        segments: [{ type: "sine", frequency: BASE_FREQ, duration: 0.3 }],
-      },
-      {
-        id: "pii-square",
-        label: "矩形波・長め (0.3s)",
-        description: "3000Hzの矩形波を長く伸ばす",
-        segments: [{ type: "square", frequency: BASE_FREQ, duration: 0.3 }],
-      },
-      {
-        id: "pii-harmonic",
-        label: "サイン波+倍音・長め (0.3s)",
-        description: "3000Hz + 6000Hz(弱め)を長く伸ばす",
-        segments: [
-          {
-            type: "sine",
-            frequency: BASE_FREQ,
-            duration: 0.3,
-            harmonics: [{ frequency: HARMONIC_FREQ, gain: 0.35 }],
-          },
-        ],
+        id: "sustain-020",
+        label: "0.20s",
+        description: "ほぼ一定の音量で鳴り、最後だけ短く消える",
+        segments: harmonicTone(0.2, "sustain"),
       },
     ],
   },
@@ -173,7 +104,7 @@ export default function SoundTestPage() {
       <div className="text-center">
         <h1 className="text-xl font-bold text-slate-900">音の聞き比べ</h1>
         <p className="mt-1 text-sm text-slate-500">
-          基音3000Hz(実測値)をベースにした候補です
+          サイン波(3000Hz)+倍音(6000Hz)をベースに、長さとエンベロープの違いを比較
         </p>
       </div>
 
