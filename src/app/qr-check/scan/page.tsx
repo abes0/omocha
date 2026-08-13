@@ -20,12 +20,14 @@ type Status =
 const BEEP_COOLDOWN_MS = 3000;
 
 // サステイン型・0.15s・3000Hz(+6000Hzの弱い倍音)で聞き比べた結果、決定した音。
+// gainは通常のデフォルト(0.3)の半分に下げている。
 const MATCH_TONE: ToneSegment[] = [
   {
     type: "sine",
     frequency: 3000,
     duration: 0.15,
     envelope: "sustain",
+    gain: 0.15,
     harmonics: [{ frequency: 6000, gain: 0.35 }],
   },
 ];
@@ -42,7 +44,7 @@ const PAYPAY_VOLUME = 1;
 // レジ音は最初小さく→だんだん大きくするが、最大でも0.2までに抑える。
 // (HTMLAudioElement.volumeはiOS Safariでは無視されるため、GainNode経由で制御する)
 const REGISTER_MIN_VOLUME = 0.01;
-const REGISTER_MAX_VOLUME = 0.02;
+const REGISTER_MAX_VOLUME = 0.035;
 
 function rampRegisterGain(ctx: AudioContext, gainNode: GainNode, duration: number) {
   const now = ctx.currentTime;
@@ -52,6 +54,25 @@ function rampRegisterGain(ctx: AudioContext, gainNode: GainNode, duration: numbe
     REGISTER_MAX_VOLUME,
     now + Math.max(duration, 0.05),
   );
+}
+
+// Seeking before the audio's metadata has loaded is unreliable (some
+// browsers silently ignore it and start from 0 instead), which was the
+// likely cause of the paypay voice intermittently not being heard. Wait for
+// "loadedmetadata" when needed, and surface any play() failure instead of
+// swallowing it silently.
+function playAudioFrom(audio: HTMLAudioElement, offsetSec: number) {
+  const start = () => {
+    audio.currentTime = offsetSec;
+    audio.play().catch((err) => {
+      console.error("[qr-check] 音声の再生に失敗しました", err);
+    });
+  };
+  if (audio.readyState >= audio.HAVE_METADATA) {
+    start();
+  } else {
+    audio.addEventListener("loadedmetadata", start, { once: true });
+  }
 }
 
 type SoundMode = "beep" | "payment";
@@ -73,7 +94,7 @@ export default function ScanPage() {
   const [status, setStatus] = useState<Status>("idle");
   const [currentUrl, setCurrentUrl] = useState("");
   const [soundMode, setSoundMode] = useState<SoundMode>("beep");
-  const [facingMode, setFacingMode] = useState<CameraFacing>("user");
+  const [facingMode, setFacingMode] = useState<CameraFacing>("environment");
 
   const playBeep = useCallback((ok: boolean) => {
     const AudioCtx =
@@ -91,13 +112,11 @@ export default function ScanPage() {
     const registerGain = registerGainRef.current;
     const paypayAudio = paypayAudioRef.current;
     if (soundMode === "payment" && ctx && registerAudio && registerGain && paypayAudio) {
-      registerAudio.currentTime = 0;
       rampRegisterGain(ctx, registerGain, registerAudio.duration || 0.3);
-      registerAudio.play().catch(() => {});
+      playAudioFrom(registerAudio, 0);
 
-      paypayAudio.currentTime = PAYPAY_START_OFFSET_SEC;
       paypayAudio.volume = PAYPAY_VOLUME;
-      paypayAudio.play().catch(() => {});
+      playAudioFrom(paypayAudio, PAYPAY_START_OFFSET_SEC);
       return;
     }
     playBeep(true);
